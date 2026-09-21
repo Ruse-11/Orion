@@ -7,7 +7,7 @@ import {
   ScanSearch, Satellite, ShieldCheck, TreePine, Waves, X
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { forest, biomassTrend, alerts, canopyGeoJson, tree } from "@/data/demo";
+import { forest, forestRegions, biomassTrend, alerts, canopyGeoJson, tree } from "@/data/demo";
 import MapMock from "./MapMock";
 
 type Page = "overview" | "explorer" | "fusion" | "canopy" | "biomass" | "change" | "alerts" | "validation";
@@ -28,6 +28,8 @@ export default function Dashboard() {
   const [layer, setLayer] = useState<"optical" | "ndvi" | "sar" | "canopy" | "biomass" | "change">("optical");
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [selectedTree, setSelectedTree] = useState(false);
+  const [regionPicker, setRegionPicker] = useState(false);
+  const [activeForest, setActiveForest] = useState<(typeof forestRegions)[number]>(forestRegions[0]);
 
   const runAnalysis = () => {
     setAnalysisRunning(true);
@@ -81,13 +83,13 @@ export default function Dashboard() {
             <h1>{page === "overview" ? "Mission Control" : nav.find(n => n.id === page)?.label}</h1>
           </div>
           <div className="top-actions">
-            <div className="location-pill"><CircleDot size={13} /> {forest.region}</div>
+            <button className="location-pill location-select" style={{ display: "flex" }} onClick={() => setRegionPicker(true)}><CircleDot size={13} /> {activeForest.name.replace(" Landscape", "").replace(" Forest Reserve", "").replace(" Biosphere", "")} <ChevronRight size={13}/></button>
             <div className="status-pill"><span className="pulse" /> LIVE</div>
             <button className="icon-button"><AlertTriangle size={17} /></button>
           </div>
         </header>
 
-        {page === "overview" && <Overview setPage={setPage} setLayer={setLayer} runAnalysis={runAnalysis} />}
+        {page === "overview" && <Overview forest={activeForest} setPage={setPage} setLayer={setLayer} runAnalysis={runAnalysis} />}
         {page === "explorer" && <Explorer layer={layer} setLayer={setLayer} onTree={() => setSelectedTree(true)} />}
         {page === "fusion" && <Fusion />}
         {page === "canopy" && <Canopy onTree={() => setSelectedTree(true)} />}
@@ -98,17 +100,27 @@ export default function Dashboard() {
 
         <footer className="footer">
           <span>SYLVASENSE • DEMO DATASET • ROUND 1</span>
-          <span>Last analysis {forest.analysisDate}</span>
+          <span>{activeForest.name} · analysis {activeForest.analysisDate}</span>
         </footer>
       </section>
 
       {selectedTree && <TreePanel onClose={() => setSelectedTree(false)} />}
       {analysisRunning && <AnalysisOverlay onFinish={() => setAnalysisRunning(false)} />}
+      {regionPicker && <RegionPicker active={activeForest.name} onClose={() => setRegionPicker(false)} onSelect={(next) => { setActiveForest(next); setRegionPicker(false); setPage("overview"); }} />}
     </main>
   );
 }
 
-function Overview({ setPage, setLayer, runAnalysis }: any) {
+function RegionPicker({ active, onClose, onSelect }: { active: string; onClose: () => void; onSelect: (forest: (typeof forestRegions)[number]) => void }) {
+  return <div className="drawer-backdrop region-backdrop" onClick={onClose}><section className="region-picker" onClick={event => event.stopPropagation()}>
+    <div className="drawer-head"><div><span className="eyebrow">DEMO OPERATING AREA</span><h2>Select forest region</h2></div><button className="icon-button" onClick={onClose}><X size={17}/></button></div>
+    <p>Switching regions loads a prepared deterministic monitoring scenario. No external data source is required.</p>
+    <div className="region-list">{forestRegions.map((item, index) => <button key={item.name} className={`region-option ${active === item.name ? "selected" : ""}`} onClick={() => onSelect(item)}><div className="region-marker">0{index + 1}</div><div><b>{item.name}</b><span>{item.region}</span><small>{item.areaHa} ha · {item.trees.toLocaleString()} detected trees</small></div>{active === item.name && <span className="region-active">ACTIVE</span>}</button>)}</div>
+    <div className="region-note"><span className="pulse"/> All scenarios are ready for multi-sensor analysis</div>
+  </section></div>;
+}
+
+function Overview({ forest: activeForest, setPage, setLayer, runAnalysis }: any) {
   return (
     <div className="content">
       <div className="hero-row">
@@ -116,15 +128,16 @@ function Overview({ setPage, setLayer, runAnalysis }: any) {
           <div className="tag"><Satellite size={13} /> MULTI-SENSOR FOREST ANALYSIS</div>
           <h2>From satellite signals to <span>tree-level intelligence.</span></h2>
           <p className="hero-copy">Fuse optical, SAR and structural observations to enumerate canopies, estimate biomass and detect forest change.</p>
+          <div className="live-feed"><span className="pulse"/> <b>LIVE TELEMETRY</b><i/> Sentinel-1 pass synchronized <i/> Canopy model ready <i/> Last refresh 14s ago</div>
         </div>
         <button className="primary-button" onClick={runAnalysis}><RadioTower size={17} /> Start live analysis <ChevronRight size={16} /></button>
       </div>
 
       <div className="kpi-grid">
-        <Kpi icon={<TreePine />} label="TREES DETECTED" value={forest.trees.toLocaleString()} delta="+3.2%" />
-        <Kpi icon={<MapIcon />} label="CANOPY AREA" value={`${forest.areaHa} ha`} delta={`${forest.canopy}% coverage`} />
-        <Kpi icon={<BarChart3 />} label="ABOVEGROUND BIOMASS" value={`${forest.agb.toLocaleString()} t`} delta={`${forest.biomassDensity} t/ha`} />
-        <Kpi icon={<Leaf />} label="CARBON STOCK" value={`${forest.carbon.toLocaleString()} tC`} delta={`${forest.co2e.toLocaleString()} tCO₂e`} />
+        <Kpi icon={<TreePine />} label="TREES DETECTED" value={activeForest.trees.toLocaleString()} delta="+3.2%" />
+        <Kpi icon={<MapIcon />} label="CANOPY AREA" value={`${activeForest.areaHa} ha`} delta={`${activeForest.canopy}% coverage`} />
+        <Kpi icon={<BarChart3 />} label="ABOVEGROUND BIOMASS" value={`${activeForest.agb.toLocaleString()} t`} delta={`${activeForest.biomassDensity} t/ha`} />
+        <Kpi icon={<Leaf />} label="CARBON STOCK" value={`${activeForest.carbon.toLocaleString()} tC`} delta={`${activeForest.co2e.toLocaleString()} tCO₂e`} />
       </div>
 
       <div className="grid-main">
@@ -134,8 +147,8 @@ function Overview({ setPage, setLayer, runAnalysis }: any) {
         </div>
         <div className="panel health-panel">
           <PanelHeader title="FOREST HEALTH" meta="COMPOSITE INDEX" />
-          <div className="health-score"><strong>{forest.health}</strong><span>/100</span></div>
-          <div className="health-bar"><span style={{ width: `${forest.health}%` }} /></div>
+          <div className="health-score"><strong>{activeForest.health}</strong><span>/100</span></div>
+          <div className="health-bar"><span style={{ width: `${activeForest.health}%` }} /></div>
           <Metric label="Vegetation health" value="91%" />
           <Metric label="Canopy integrity" value="87%" />
           <Metric label="Biomass stability" value="76%" />

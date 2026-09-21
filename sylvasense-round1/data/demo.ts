@@ -13,6 +13,12 @@ export const forest = {
   analysisDate: "21 Sep 2026"
 };
 
+export const forestRegions = [
+  forest,
+  { name: "Munnar Highlands Landscape", region: "Western Ghats · Kerala", areaHa: 426.8, trees: 13924, canopy: 71.2, agb: 20218, biomassDensity: 47.4, carbon: 9502, co2e: 34841, health: 91, risk: 18, analysisDate: "20 Sep 2026" },
+  { name: "Agasthyamalai Biosphere", region: "Southern Western Ghats · Tamil Nadu", areaHa: 317.2, trees: 10877, canopy: 63.8, agb: 14968, biomassDensity: 47.2, carbon: 7034, co2e: 25791, health: 82, risk: 31, analysisDate: "19 Sep 2026" }
+] as const;
+
 export const tree = {
   id: "TREE-08421",
   lat: 11.0792,
